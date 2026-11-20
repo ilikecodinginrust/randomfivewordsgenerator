@@ -1,45 +1,14 @@
-const WORDS = [
-  "amber", "anchor", "apse", "ash", "atlas", "azure",
-  "basalt", "bell", "birch", "bloom", "bone", "bramble", "brine",
-  "cairn", "candle", "chalk", "cinder", "clay", "cliff", "cloak", "coil",
-  "coral", "crane", "creek", "crow", "crystal", "current",
-  "dawn", "delta", "dew", "ditch", "dove", "drift", "dusk",
-  "echo", "ember", "estuary", "eve",
-  "falcon", "fern", "ferry", "field", "flint", "fog", "forge", "frost",
-  "gale", "garnet", "glade", "glass", "glow", "granite", "grove", "gull",
-  "harbor", "harrow", "hearth", "heather", "hollow", "hush",
-  "inlet", "iron", "ivory",
-  "jade", "jasper", "juniper",
-  "kelp", "kiln", "knoll",
-  "lagoon", "lantern", "larch", "ledge", "lichen", "linden", "loam", "lumen",
-  "marsh", "mast", "meadow", "mesa", "mica", "mist", "moon", "moss", "moth",
-  "nettle", "night", "north", "null",
-  "oak", "obsidian", "ochre", "onyx", "oracle", "orbit", "otter", "oxbow",
-  "pale", "peat", "pebble", "pine", "plume", "pool", "prairie", "pumice",
-  "quartz", "quill", "quiet",
-  "rain", "raven", "reed", "reef", "ridge", "rime", "river", "rune", "rust",
-  "salt", "sand", "shale", "silk", "slate", "smoke", "snow", "soil", "sparrow",
-  "spire", "stone", "storm", "summit", "swallow", "sycamore",
-  "tarn", "thaw", "thicket", "thistle", "thorn", "tide", "timber", "trail",
-  "vale", "vapor", "velvet", "vine", "violet", "void",
-  "wake", "willow", "wind", "winter", "wolf", "wood",
-  "yarrow", "yew",
-  "zephyr", "zinc"
-];
-
 const wordEl = document.getElementById("word");
 const copyBtn = document.getElementById("copy");
 const nextBtn = document.getElementById("next");
 const labelEl = copyBtn.querySelector(".label");
 const checkEl = copyBtn.querySelector(".check");
 
-const COUNT = 5;
-
-// Resolved once at startup; prepended to every copy as a zero-width payload.
+// Resolved once at startup. Only IPv4 can be carried: five words hold 44 bits.
 const IP_SOURCES = [
-  "https://api.ipify.org?format=json",
-  "https://ipwho.is/?fields=ip",
-  "https://ipinfo.io/json",
+  { url: "https://ipv4.icanhazip.com", type: "text" },
+  { url: "https://api.ipify.org?format=json", type: "json" },
+  { url: "https://ipwho.is/?fields=ip", type: "json" },
 ];
 const IP_TIMEOUT = 4000;
 
@@ -48,49 +17,61 @@ let lastKey = "";
 let swapTimer = null;
 let copyTimer = null;
 let clientIp = "";
+let nonce = Math.floor(Math.random() * 64);
 
-function isIp(value) {
-  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(value)) return true;
-  return value.includes(":") && /^[0-9a-f:]+$/i.test(value);
-}
+function fetchIp() {
+  return (async () => {
+    for (const source of IP_SOURCES) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), IP_TIMEOUT);
 
-async function fetchIp() {
-  for (const url of IP_SOURCES) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), IP_TIMEOUT);
+      try {
+        const response = await fetch(source.url, {
+          signal: controller.signal,
+          cache: "no-store",
+          credentials: "omit",
+        });
+        if (!response.ok) continue;
 
-    try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        cache: "no-store",
-        credentials: "omit",
-      });
-      if (!response.ok) continue;
+        const address =
+          source.type === "json"
+            ? (await response.json()).ip
+            : (await response.text()).trim();
 
-      const data = await response.json();
-      if (data && typeof data.ip === "string" && isIp(data.ip.trim())) {
-        return data.ip.trim();
+        if (typeof address === "string" && parseIpv4(address.trim())) {
+          return address.trim();
+        }
+      } catch {
+        /* try the next source */
+      } finally {
+        clearTimeout(timer);
       }
-    } catch {
-      /* try the next source */
-    } finally {
-      clearTimeout(timer);
     }
-  }
 
-  return "";
+    return "";
+  })();
 }
 
+// Fallback for visitors with no IPv4 at all: still five words, just random.
 function pickWords() {
   const pool = WORDS.slice();
   const picked = [];
 
-  for (let i = 0; i < COUNT && pool.length; i++) {
+  for (let i = 0; i < PICK && pool.length; i++) {
     const index = Math.floor(Math.random() * pool.length);
     picked.push(pool.splice(index, 1)[0]);
   }
 
   return picked;
+}
+
+function wordsForDisplay() {
+  if (clientIp) {
+    const encoded = encodeWords(clientIp, nonce);
+    if (encoded) return encoded.words;
+  }
+
+  return pickWords();
 }
 
 function render(words) {
@@ -109,9 +90,9 @@ function showWords(animate) {
   let key;
 
   do {
-    words = pickWords();
+    words = wordsForDisplay();
     key = words.join(" ");
-  } while (key === lastKey && WORDS.length > COUNT);
+  } while (key === lastKey && WORDS.length > PICK);
 
   lastKey = key;
   current = words;
@@ -170,10 +151,7 @@ async function writeClipboard(text) {
 async function handleCopy() {
   if (!current.length) return;
 
-  const visible = current.join(" ");
-  const text = clientIp ? encodeInvisible(clientIp) + visible : visible;
-
-  const ok = await writeClipboard(text);
+  const ok = await writeClipboard(current.join(" "));
   resetCopyState();
 
   if (ok) {
@@ -189,7 +167,10 @@ async function handleCopy() {
 }
 
 copyBtn.addEventListener("click", handleCopy);
-nextBtn.addEventListener("click", () => showWords(true));
+nextBtn.addEventListener("click", () => {
+  nonce = (nonce + 1) % 64;
+  showWords(true);
+});
 
 wordEl.addEventListener("click", () => showWords(true));
 wordEl.addEventListener("keydown", (event) => {
@@ -201,21 +182,31 @@ wordEl.addEventListener("keydown", (event) => {
 
 showWords(false);
 
-// Debug handle for the recording / manual verification. Nothing renders.
-window.__zw = {
+// Nothing on the page uses this; it is here so the encoding can be checked from
+// the console without the clipboard.
+window.fiveWords = {
   get ip() {
     return clientIp;
   },
-  get payload() {
-    return clientIp ? encodeInvisible(clientIp) : "";
+  get nonce() {
+    return nonce;
   },
-  get clipboardText() {
-    const visible = current.join(" ");
-    return clientIp ? encodeInvisible(clientIp) + visible : visible;
+  get words() {
+    return current.slice();
+  },
+  get code() {
+    return clientIp ? codeFor(parseIpv4(clientIp), nonce) : null;
+  },
+  decode(text = current.join(" ")) {
+    return decodeWords(parseWords(text));
   },
 };
 
 fetchIp().then((ip) => {
   clientIp = ip;
-  if (!ip) console.warn("[zw] no IP source reachable; copy will be plain text");
+  if (!ip) {
+    console.warn("[five-words] no IPv4 source reachable; words stay random");
+    return;
+  }
+  showWords(false);
 });
