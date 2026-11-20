@@ -1,0 +1,152 @@
+:root {
+  --bg: #f4f3ef;
+  --fg: #1a1a18;
+  --muted: #8a877e;
+  --line: #d9d7cf;
+  --accent: #1a1a18;
+  --accent-fg: #f4f3ef;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #eceae4;
+    --muted: #726f67;
+    --line: #2a2a28;
+    --accent: #eceae4;
+    --accent-fg: #121212;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  width: 100%;
+  max-width: 30rem;
+  text-align: center;
+}
+
+.prompt {
+  margin: 0 0 1.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.6rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: opacity 120ms ease;
+  text-wrap: balance;
+}
+
+h1 .w {
+  display: inline-block;
+  margin: 0 0.22em 0.1em;
+}
+
+h1:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+h1.swap { opacity: 0; }
+
+.actions {
+  margin-top: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+button {
+  font: inherit;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.copy {
+  position: relative;
+  padding: 0.75rem 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  min-width: 9.5rem;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.copy:hover {
+  border-color: var(--fg);
+}
+
+.copy .label,
+.copy .check {
+  display: block;
+  transition: opacity 140ms ease;
+}
+
+.copy .check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+}
+
+.copy.done {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.copy.done .label { opacity: 0; }
+.copy.done .check { opacity: 1; }
+
+.next {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.75rem 0.25rem;
+  transition: color 160ms ease;
+}
+
+.next:hover { color: var(--fg); }
+
+button:focus-visible {
+  outline: 1px solid var(--fg);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

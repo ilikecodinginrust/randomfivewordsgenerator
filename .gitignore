@@ -1,0 +1,7 @@
+# demo checker — kept local, never published
+check.html
+check.js
+check.css
+
+.DS_Store
+node_modules/
