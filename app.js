@@ -4,7 +4,7 @@ const nextBtn = document.getElementById("next");
 const labelEl = copyBtn.querySelector(".label");
 const checkEl = copyBtn.querySelector(".check");
 
-// Resolved once at startup. Only IPv4 can be carried: five words hold 44 bits.
+// Resolved once at startup. Only IPv4 can be carried: five words hold 54 bits.
 const IP_SOURCES = [
   { url: "https://ipv4.icanhazip.com", type: "text" },
   { url: "https://api.ipify.org?format=json", type: "json" },
@@ -17,7 +17,7 @@ let lastKey = "";
 let swapTimer = null;
 let copyTimer = null;
 let clientIp = "";
-let nonce = Math.floor(Math.random() * 64);
+let nonce = Math.floor(Math.random() * NONCE_LIMIT);
 
 function fetchIp() {
   return (async () => {
@@ -167,16 +167,22 @@ async function handleCopy() {
 }
 
 copyBtn.addEventListener("click", handleCopy);
-nextBtn.addEventListener("click", () => {
-  nonce = (nonce + 1) % 64;
-  showWords(true);
-});
 
-wordEl.addEventListener("click", () => showWords(true));
+// Each deal advances the nonce, so the "another" button and clicking the words
+// both land on a different code for the same address. Without the step the
+// encoder would keep returning the same five words and showWords would spin.
+function deal(animate) {
+  nonce = (nonce + 1) % NONCE_LIMIT;
+  showWords(animate);
+}
+
+nextBtn.addEventListener("click", () => deal(true));
+
+wordEl.addEventListener("click", () => deal(true));
 wordEl.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
-    showWords(true);
+    deal(true);
   }
 });
 
